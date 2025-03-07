@@ -23,7 +23,7 @@ public:
 	uint8_t memory[MEMORY_SIZE]{}; // placeholder, for logic and stuff
 
     // these two are placeholders until I figure out the cart stuff
- void setItem(int i, int value){
+ void setItem(uint16_t i, uint16_t value){
 
  }
 

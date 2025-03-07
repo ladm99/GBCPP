@@ -4,7 +4,11 @@
 class Opcodes{
     private:
     public:
-        
+        int flag_c = 4; // carry flag, 4th bit in A
+        int flag_h = 5; // half carry flag, 5th bit in A
+        int flag_n = 6; // subtraction flag, 6th bit in A
+        int flag_z = 7; // zero flag, 7th bit in A
+
         // 0x00, just adds 1 to pc, cycles: 1, bytes: 3
         void NOP(CPU cpu){ 
             cpu.pc+=1;
@@ -41,13 +45,26 @@ class Opcodes{
         // 0x04, adds 1 to B, c:1, b:1
         void INC_B(CPU cpu){
             cpu.B+=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.B == 0)
+                flag|= (1 << flag_z);
+            if(cpu.B & (1 << 3))
+                flag|= (1 << flag_h);
+            cpu.F = flag;
             cpu.pc+=1;
             cpu.cycle+=1;
         }
 
-        // 0x05, subtracts 1 from B, c:1, b:1
+        // 0x05, subtracts 1 from B, do logic for flags z, h, and n, c:1, b:1
         void DEC_B(CPU cpu){
             cpu.B-=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.B == 0)
+                flag|= (1 << flag_z);
+            if(cpu.B & (1 << 3))
+                flag|= (1 << flag_h);
+            flag|= (1 << flag_n);
+            cpu.F = flag;
             cpu.pc+=1;
             cpu.cycle+=1;
         }
@@ -59,11 +76,98 @@ class Opcodes{
             cpu.cycle+=2;
         }
 
-        // 0x07, Rotates contents of A to the left, contents of bit 7 are placed in CY flag and bit 0 of A, c: 1, b:1
+        // 0x07, Rotates contents of A to the left, contents of bit 7 are placed in flag_c and bit 0 of A, c: 1, b:1
         void RLCA(CPU cpu){
-            
+            uint8_t shift = (cpu.A << 1) + (cpu.A >> 7);
+            uint8_t flag = 0b00000000;
+            flag = ((cpu.A >> 7) << flag_c) | flag;
+            cpu.A = shift;
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
         }
 
+        // 0x08, store the lower byte of sp at the address specified by the immediate 16 bit operand a16, and store the pper byte of sp at the address a16 + 1. c: 5, b: 3
+        void LD_a16_sp(CPU cpu,uint16_t value){
+            cpu.setItem(value, cpu.sp & 0xFF);
+            cpu.setItem(value + 1, cpu.sp >> 8);
+            cpu.pc+=3;
+            cpu.cycle+=5;
+        }
+
+        // 0x09, add contents of BC to the contents of HL and store it in HL,set flag_h and flag_c based on their logic, c: 2, b: 1
+        void ADD_HL_BC(CPU cpu){
+            uint16_t BC_value = (cpu.B << 8) + cpu.C;
+            uint16_t HL_value = (cpu.H << 8) + cpu.L;
+            int sum = BC_value + HL_value;
+            uint16_t sum_16b = BC_value + HL_value;
+            uint16_t lsb = sum_16b >> 8;
+            uint16_t msb = sum_16b & 0x00FF;
+            uint8_t flag = 0b00000000;
+            // check bits 11 and 15 in sum for flags
+            if(sum & (1 << 11))
+                flag|= (1 << flag_h);
+            else
+                // invert flag then use and to set bit n to 0
+                flag|= flag & ~(1 << flag_h);
+            if(sum & (1 << 15))
+                flag|= (1 << flag_c);
+            else
+                flag|= flag & ~(1 << flag_c);
+            cpu.F = flag;
+            cpu.H = lsb;
+            cpu.L = msb;
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+        // 0x0A, load memory[BC] into A, c: 2, b: 1
+        void LD_A_BC(CPU cpu){
+            uint16_t BC_value = (cpu.B << 8) + cpu.C;
+            uint8_t value_from_memory = cpu.getItem(BC_value);
+            cpu.A = value_from_memory;
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+        // 0x0B, decrement BC by 1, c: 2, b: 1
+        void DEC_BC(CPU cpu){
+            uint16_t BC_value = (cpu.B << 8) + cpu.C;
+            BC_value-=1;
+            uint16_t lsb = BC_value >> 8;
+            uint16_t msb = BC_value & 0x00FF;
+            cpu.B = lsb;
+            cpu.C = msb;
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+        // 0x0C, increase C by 1, set flag z to 1 if the result is 0 and set flag h to 1 if bit 3 of the result is 1, c: 1, b: 1
+        void INC_c(CPU cpu){
+            cpu.C+=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.C == 0)
+                flag|= (1 << flag_z);
+            if(cpu.C & (1 << 3))
+                flag|= (1 << flag_h);
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
+        // 0x0D, decrement c by 1, do the flag stuff, c: 1, b: 1
+        void DEC_C(CPU cpu){
+            cpu.C-=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.C == 0)
+                flag|= (1 << flag_z);
+            if(cpu.C & (1 << 3))
+                flag|= (1 << flag_h);
+            flag|= (1 << flag_n);
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
 
         void execute(CPU cpu, uint16_t opcode){
             int value = 0;
