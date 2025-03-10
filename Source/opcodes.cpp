@@ -169,6 +169,31 @@ class Opcodes{
             cpu.cycle+=1;
         }
 
+        // 0x0E, load 8 bit immediate opperand d8 int C, c: 2, b: 2
+        void LD_C_d8(CPU cpu, uint8_t value){
+            cpu.C = value;
+            cpu.pc+=2;
+            cpu.cycle+=2;
+        }
+
+        // 0x0F, Rotate A to the right, contents of bit 7 are placed in flag_c and bit 0 of A, c: 1, b:1
+        void RRCA(CPU cpu){
+            uint8_t shift = (cpu.A > 1) + (cpu.A << 7);
+            uint8_t flag = 0b00000000;
+            flag = ((cpu.A >> 7) << flag_c) | flag;
+            cpu.A = shift;
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
+        // 0x100, STOP instruction, stops system clock and oscillator circuit, RAM remains unchanged, c: 1, b: 2
+        void STOP(CPU cpu){
+            // do the logic for this when system clock and oscillator are implemented
+            cpu.pc+=2;
+            cpu.cycle+=1;
+        }
+
         void execute(CPU cpu, uint16_t opcode){
             int value = 0;
             uint16_t pc = cpu.pc;
