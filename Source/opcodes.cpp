@@ -194,6 +194,67 @@ class Opcodes{
             cpu.cycle+=1;
         }
 
+        // 0x11, loads 2 bytes into register  pair DE, c: 3, b: 3
+        void LD_DE_d16(CPU cpu, uint16_t value){
+            uint16_t lsb = value >> 8;
+            uint16_t msb = value & 0x00FF;
+            cpu.D = lsb;
+            cpu.E = msb;
+            cpu.pc+=3;
+            cpu.cycle+=3;
+        }
+
+        // 0x12, stores contents of A in location specified by DE, c: 2, b: 1
+        void LD_DE_A(CPU cpu){
+            cpu.setItem((cpu.D << 8) + cpu.E, cpu.A);
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+        // 0x13, increments contents of DE by 1, c:2, b: 1
+        void INC_DE(CPU cpu){
+            uint16_t DE_value = (cpu.D << 8) + cpu.E;
+            DE_value+=1;
+            cpu.D = DE_value >> 8;
+            cpu.E = DE_value & 0x00FF;
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+        // 0x14, adds 1 to D, c:1, b:1
+        void INC_D(CPU cpu){
+            cpu.D+=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.D == 0)
+                flag|= (1 << flag_z);
+            if(cpu.D & (1 << 3))
+                flag|= (1 << flag_h);
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
+        // 0x15, subtracts 1 from D, do logic for flags z, h, and n, c:1, b:1
+        void DEC_D(CPU cpu){
+            cpu.D-=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.D == 0)
+                flag|= (1 << flag_z);
+            if(cpu.D & (1 << 3))
+                flag|= (1 << flag_h);
+            flag|= (1 << flag_n);
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
+        // 0x16, load 8 bit immediate opperand d8 into D, c: 2, b: 2
+        void LD_D_d8(CPU cpu, uint8_t value){
+            cpu.B = value;
+            cpu.pc+=2;
+            cpu.cycle+=2;
+        }
+
         void execute(CPU cpu, uint16_t opcode){
             int value = 0;
             uint16_t pc = cpu.pc;
