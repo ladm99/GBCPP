@@ -255,6 +255,17 @@ class Opcodes{
             cpu.cycle+=2;
         }
 
+        // 0x17, shift to the left, value in carry flag is put at bit 0 c: 1, b: 1
+        void RLA(CPU cpu){
+            uint8_t shift = (cpu.A << 1);
+            uint8_t flag = 0b00000000;
+            shift = shift + (cpu.F << flag_c) >> 7;
+            cpu.A = shift;
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
         void execute(CPU cpu, uint16_t opcode){
             int value = 0;
             uint16_t pc = cpu.pc;
