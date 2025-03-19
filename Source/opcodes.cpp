@@ -143,7 +143,7 @@ class Opcodes{
         }
 
         // 0x0C, increase C by 1, set flag z to 1 if the result is 0 and set flag h to 1 if bit 3 of the result is 1, c: 1, b: 1
-        void INC_c(CPU cpu){
+        void INC_C(CPU cpu){
             cpu.C+=1;
             uint8_t flag = 0b00000000;
             if(cpu.C == 0)
@@ -187,7 +187,7 @@ class Opcodes{
             cpu.cycle+=1;
         }
 
-        // 0x100, STOP instruction, stops system clock and oscillator circuit, RAM remains unchanged, c: 1, b: 2
+        // 0x10, STOP instruction, stops system clock and oscillator circuit, RAM remains unchanged, c: 1, b: 2
         void STOP(CPU cpu){
             // do the logic for this when system clock and oscillator are implemented
             cpu.pc+=2;
@@ -260,6 +260,104 @@ class Opcodes{
             uint8_t shift = (cpu.A << 1);
             uint8_t flag = 0b00000000;
             shift = shift + (cpu.F << flag_c) >> 7;
+            cpu.A = shift;
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
+        // 0x18, unconditional jump in memory s8 steps from current pc, c: 3, b: 2
+        void JR_s8(CPU cpu, uint8_t value){
+            cpu.pc+= 2 + ((value ^ 0x80) - 0x80);
+            cpu.cycle+=3;
+        }
+
+        // 0x19, add contents of DE to the contents of HL and store it in HL,set flag_h and flag_c based on their logic, c: 2, b: 1
+        void ADD_HL_DE(CPU cpu){
+            uint16_t DE_value = (cpu.D << 8) + cpu.E;
+            uint16_t HL_value = (cpu.H << 8) + cpu.L;
+            int sum = DE_value + HL_value;
+            uint16_t sum_16b = DE_value + HL_value;
+            uint16_t lsb = sum_16b >> 8;
+            uint16_t msb = sum_16b & 0x00FF;
+            uint8_t flag = 0b00000000;
+            // check bits 11 and 15 in sum for flags
+            if(sum & (1 << 11))
+                flag|= (1 << flag_h);
+            else
+                // invert flag then use and to set bit n to 0
+                flag|= flag & ~(1 << flag_h);
+            if(sum & (1 << 15))
+                flag|= (1 << flag_c);
+            else
+                flag|= flag & ~(1 << flag_c);
+            cpu.F = flag;
+            cpu.H = lsb;
+            cpu.L = msb;
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+         // 0x1A, load memory[DE] into A, c: 2, b: 1
+         void LD_A_DE(CPU cpu){
+            uint16_t DE_value = (cpu.D << 8) + cpu.E;
+            uint8_t value_from_memory = cpu.getItem(DE_value);
+            cpu.A = value_from_memory;
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+        // 0x1B, decrement DE by 1, c: 2, b: 1
+        void DEC_BC(CPU cpu){
+            uint16_t DE_value = (cpu.D << 8) + cpu.E;
+            DE_value-=1;
+            uint16_t lsb = DE_value >> 8;
+            uint16_t msb = DE_value & 0x00FF;
+            cpu.B = lsb;
+            cpu.C = msb;
+            cpu.pc+=1;
+            cpu.cycle+=2;
+        }
+
+        // 0x1C, increase E by 1, set flag z to 1 if the result is 0 and set flag h to 1 if bit 3 of the result is 1, c: 1, b: 1
+        void INC_E(CPU cpu){
+            cpu.E+=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.E == 0)
+                flag|= (1 << flag_z);
+            if(cpu.E & (1 << 3))
+                flag|= (1 << flag_h);
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
+        // 0x1D, decrement E by 1, do the flag stuff, c: 1, b: 1
+        void DEC_E(CPU cpu){
+            cpu.E-=1;
+            uint8_t flag = 0b00000000;
+            if(cpu.E == 0)
+                flag|= (1 << flag_z);
+            if(cpu.E & (1 << 3))
+                flag|= (1 << flag_h);
+            flag|= (1 << flag_n);
+            cpu.F = flag;
+            cpu.pc+=1;
+            cpu.cycle+=1;
+        }
+
+        // 0x1E, load 8 bit immediate opperand d8 int E, c: 2, b: 2
+        void LD_E_d8(CPU cpu, uint8_t value){
+            cpu.E = value;
+            cpu.pc+=2;
+            cpu.cycle+=2;
+        }
+
+        // 0x1F, rotates A to the right, value in carry flag is put at bit 7 c: 1, b: 1
+        void RRA(CPU cpu){
+            uint8_t shift = (cpu.A >> 1);
+            uint8_t flag = 0b00000000;
+            shift = shift + (cpu.F << flag_c);
             cpu.A = shift;
             cpu.F = flag;
             cpu.pc+=1;
